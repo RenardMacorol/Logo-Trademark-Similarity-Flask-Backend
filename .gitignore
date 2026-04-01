@@ -1,0 +1,24 @@
+databases/
+# Python caches and virtual environments
+__pycache__/
+*.pyc
+venv/
+env/
+.env
+
+# Heavy Machine Learning Models
+test_models/
+*.keras
+*.h5
+*.pb
+
+# Large Database Files
+*.npy
+
+# User Uploads (We don't want to save random test images to GitHub)
+static/uploads/*
+!static/uploads/.gitkeep
+
+# OS generated files
+.DS_Store
+Thumbs.db

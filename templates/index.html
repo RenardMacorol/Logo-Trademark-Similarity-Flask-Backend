@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Keras Dual Model App</title>
+	<style>
+		body {
+			font-family: sans-serif;
+			margin: 50px;
+			text-align: center;
+		}
+
+		.result-box {
+			background: #f4f4f4;
+			padding: 20px;
+			border-radius: 10px;
+			margin-top: 20px;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>Segmentation + Triplet Model</h1>
+
+	<form method="POST" enctype="multipart/form-data">
+		<input type="file" name="file" accept="image/*">
+		<button type="submit">Run Inference</button>
+	</form>
+
+	{% if embedding %}
+	<div class="result-box">
+		<h3>Analysis Success!</h3>
+		<p><strong>First 10 Dimensions of Embedding:</strong></p>
+		<code>{{ embedding }}</code>
+	</div>
+	{% endif %}
+	
+	{% if mask_img %}
+	<div style="display: flex; gap: 20px; justify-content: center; margin-top: 20px;">
+    		<div>
+        		<h3>Segmentation Mask</h3>
+        		<img src="{{ mask_img }}" style="width: 200px; border: 1px solid #ccc;">
+    		</div>
+    		<div>
+        		<h3>Extracted Crop</h3>
+        		<img src="{{ crop_img }}" style="width: 200px; border: 1px solid #ccc;">
+    		</div>
+	</div>
+
+	{% if original_img %}
+	<div style="margin-top: 20px;">
+		<h3>Original Upload</h3>
+		<img src="{{ original_img }}" style="width: 200px; border: 1px solid #ccc;">
+	</div>
+	{% endif %}
+
+	{% if results %}
+	<div class="result-box" style="background: #e9ecef; border: 2px solid #007bff;">
+		<h2>🏆 Top 5 Database Matches</h2>
+		<ul style="list-style-type: none; padding: 0; font-size: 18px;">
+			{% for item in results %}
+			<li style="margin-bottom: 15px; padding: 10px; border-bottom: 1px solid #ccc;">
+				<strong style="color: #007bff; font-size: 22px;">{{ item.brand }}</strong><br>
+				<span style="color: #555;">Industry: {{ item.domain }}</span><br>
+				<span style="color: green; font-weight: bold;">Match: {{ item.confidence }}%</span>
+			</li>
+			{% endfor %}
+		</ul>
+	</div>
+	{% endif %}
+{% endif %}
+</body>
+
+</html>
