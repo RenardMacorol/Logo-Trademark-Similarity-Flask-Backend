@@ -1,34 +1,37 @@
-# 🧠 AI Logo Trademark Search Engine
+# 🧠 WonksNet: Multi-Task Trademark Intelligence
 
-A full-stack, dual-model AI application that detects, isolates, and identifies company logos from user-uploaded images in milliseconds. It searches against a pre-computed database of 30,000 global brands and instantly enriches the results with Wikipedia metadata.
+**WonksNet** is a high-performance, full-stack AI engine that detects, segmentates, and identifies company logos in milliseconds. By utilizing a **Multi-Task Learning (MTL)** architecture with a ResNet50 backbone, it isolates trademarks from background noise and matches them against a registry of 30,000+ global brands.
+
+---
 
 ## ✨ Key Features
-* **Two-Stage AI Vision Pipeline:**
-  1. **Logo Segmentation:** A TensorFlow model isolates the logo in the image and generates a cropping mask.
-  2. **Feature Extraction:** A Triplet Encoder model converts the cropped logo into a dense 128-dimensional mathematical vector.
-* **Lightning-Fast Vector Search:** Uses Scikit-Learn's `cosine_similarity` to instantly match the extracted vector against 30,000 pre-computed brand vectors.
-* **Contextual Enrichment:** Automatically scrapes Wikipedia to provide industry context and brand summaries.
-* **Cross-Platform Ready:** Includes a clean Bootstrap web interface and a dedicated JSON REST API (`/api/search`) designed for a mobile app (Flutter).
+
+* **Multi-Task Vision Pipeline**: A single unified encoder that simultaneously handles **Logo Segmentation** (finding the logo) and **Feature Embedding** (understanding the brand).
+* **Latent Spatial Attention**: Uses the generated segmentation mask to "weigh" the features, forcing the AI to ignore background clutter and focus only on the trademark.
+* **Sub-Millisecond Vector Search**: Optimized **Chi-Square Distance** matching against a pre-computed database for industry-leading retrieval speed.
+* **Robust Pre-Processing**: Built-in **Auto-Crop & Pseudo-Mask** logic that intelligently zooms into detected logos, drastically increasing identification confidence.
+* **Mobile-First REST API**: Dedicated JSON endpoints designed for seamless integration with **Flutter** or **React Native** applications.
+
+---
 
 ## 🛠️ Tech Stack
-* **Backend:** Python, Flask, Werkzeug
-* **Machine Learning:** TensorFlow / Keras, NumPy, Scikit-Learn, Pillow (PIL)
-* **Data Integration:** Wikipedia API, JSON
-* **Frontend:** HTML5, CSS3, Bootstrap 5
 
-## ⚠️ Important Note Regarding Setup
-To keep this Git repository lightweight, **the heavy machine learning models and database files are not included in this repository** (they are listed in `.gitignore`). 
+* **Backend**: Python, Flask, Werkzeug
+* **Deep Learning**: TensorFlow 2.x (Keras 3), ResNet50, NumPy
+* **Computer Vision**: OpenCV (Otsu Thresholding, Morphological Processing)
+* **Data**: Scikit-Learn (Vector math), Wikipedia API
+* **Deployment**: Optimized for **NVIDIA GTX 1650** (VRAM-efficient inference)
 
-To run this project locally, you must provide your own trained `.keras` models and numpy `.npy` databases in the root directory:
-* `test_models/logo_segmentation_v1_94pct.keras`
-* `test_models/best_logo_triplet_model.keras`
-* `lognet_vectors.npy`
-* `lognet_labels.npy`
-* `wikipedia_metadata.json`
+---
 
-## 🚀 Running Locally
+## 📂 Project Structure
 
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/YourUsername/ai-logo-search-flask.git](https://github.com/YourUsername/ai-logo-search-flask.git)
-   cd ai-logo-search-flask
+```text
+logo_app/
+├── core/               # AI Engine (Model architecture & Surgical Weight Loading)
+├── api/                # Mobile REST API Blueprints (JSON-first)
+├── processor/          # OpenCV Image Processing (Auto-Crop & Safety Mask)
+├── databases/          # Pre-computed Registry Vectors & Metadata
+├── static/             # Web UI assets (CSS/JS)
+├── templates/          # Bootstrap 5 Interface
+└── test_models/        # Trained .keras files (Excluded from Git)
