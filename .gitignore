@@ -11,6 +11,7 @@ test_models/
 *.keras
 *.h5
 *.pb
+.ipynb_checkpoints/
 
 # Large Database Files
 *.npy
