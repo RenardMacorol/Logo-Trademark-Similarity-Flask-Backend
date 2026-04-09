@@ -1,0 +1,15 @@
+<form method="POST" enctype="multipart/form-data"
+	style="border: 2px dashed #cbd5e0; padding: 40px; border-radius: 15px; background: #f8fbff; margin-bottom: 40px;">
+	<input type="file" name="file" accept="image/*" required>
+
+	<div style="margin: 25px 0; display: flex; gap: 15px; justify-content: center; align-items: center;">
+		<label><strong>Database Scope:</strong></label>
+		<select name="scope" style="padding: 10px; border-radius: 8px; border: 2px solid #e2e8f0;">
+			<option value="PH" {% if current_scope=='PH' %}selected{% endif %}>Philippines</option>
+			<option value="GLOBAL" {% if current_scope=='GLOBAL' %}selected{% endif %}>Global</option>
+			<option value="BOTH" {% if current_scope=='BOTH' %}selected{% endif %}>Comprehensive</option>
+		</select>
+	</div>
+
+	<button type="submit" class="btn-primary">Analyze Neural Features</button>
+</form>

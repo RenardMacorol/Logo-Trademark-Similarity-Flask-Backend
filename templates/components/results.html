@@ -1,0 +1,14 @@
+{% for item in results %}
+<div class="match-item">
+	<div>
+		<div class="brand-name">{{ item.brand }}</div>
+		<div class="category-text">Industry: {{ item.domain }}</div>
+	</div>
+	<div style="text-align: right;">
+		<div class="confidence-badge">{{ item.confidence|round(2) }}%</div>
+		{% if item.confidence > 80 %}
+		<small style="color: gold; display: block; margin-top: 5px;">⭐ Top Verified</small>
+		{% endif %}
+	</div>
+</div>
+{% endfor %}
