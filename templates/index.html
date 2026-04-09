@@ -5,27 +5,207 @@
     
     <aside style="background: #F0FAFF; padding: 25px; border-radius: 20px; border: 4px solid var(--navy-blue); height: fit-content; position: sticky; top: 10px; z-index: 10;">
         <h2 style="margin-top: 0; font-size: 1.5rem; border-bottom: 3px solid var(--sky-blue); padding-bottom: 10px;">⚙️ CONTROLS</h2>
-        {% include "components/upload_form.html" %}
+        
+        <form id="search-form" method="POST" action="/" enctype="multipart/form-data">
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: 700; color: var(--cinnamoroll-blue); margin-bottom: 8px; display: block;">☁️ Logo Image</label>
+                
+                <div id="upload-status" style="display: none; align-items: center; justify-content: space-between; background: #e3f2fd; border: 2px solid var(--sky-blue); padding: 8px 15px; border-radius: 12px; margin-bottom: 10px;">
+                    <span id="status-filename" style="font-size: 0.8rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;"></span>
+                    <button type="button" onclick="removeFile()" style="color: #d32f2f; border: none; background: none; cursor: pointer; font-weight: 900; font-size: 1.1rem;">✕</button>
+                </div>
+
+                <input type="file" name="file" id="file-input" onchange="handleFileSelect()" 
+                       style="width: 100%; padding: 10px; border: 2px solid var(--sky-blue); border-radius: 12px; background: white;">
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight: 700; display: block; margin-bottom: 5px;">🌍 Database Scope</label>
+                <select name="scope" class="ajax-trigger" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--sky-blue);">
+                    <option value="BOTH">Both Databases</option>
+                    <option value="PH">Philippines</option>
+                    <option value="GLOBAL">Global</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight: 700; display: block; margin-bottom: 5px;">📊 Sort By</label>
+                <select name="sort_by" class="ajax-trigger" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--sky-blue);">
+                    <option value="confidence">Visual Confidence</option>
+                    <option value="stability">Database Stability</option>
+                    <option value="matches">Match Count</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight: 700; display: block; margin-bottom: 5px;">🛡️ Filter Consensus</label>
+                <div style="display: flex; flex-direction: column; gap: 5px; background: white; padding: 10px; border-radius: 8px; border: 1px solid var(--sky-blue);">
+                    <label style="cursor: pointer;"><input type="checkbox" name="consensus" value="Strong" class="ajax-trigger" checked> Strong</label>
+                    <label style="cursor: pointer;"><input type="checkbox" name="consensus" value="Moderate" class="ajax-trigger" checked> Moderate</label>
+                    <label style="cursor: pointer;"><input type="checkbox" name="consensus" value="Weak" class="ajax-trigger"> Weak</label>
+                </div>
+            </div>
+	
+	<div style="margin-bottom: 20px;">
+	    <label style="font-weight: 700; display: block; margin-bottom: 5px; color: var(--navy-blue);">📂 Industry Category</label>
+	    <select name="category" multiple class="ajax-trigger" 
+		    style="width: 100%; height: 160px; padding: 10px; border-radius: 8px; border: 1.5px solid var(--sky-blue); font-size: 0.85rem; background-color: white; cursor: pointer;">
+		
+		<option value="all" selected style="font-weight: bold; color: var(--wonks-blue);">-- All Categories --</option>
+		
+		<option value="Accessories">Accessories</option>
+		<option value="Clothes">Clothes</option>
+		<option value="Cosmetic">Cosmetic</option>
+		<option value="Electronic">Electronic</option>
+		<option value="Food">Food</option>
+		<option value="Institution">Institution</option>
+		<option value="Leisure">Leisure</option>
+		<option value="Medical">Medical</option>
+		<option value="Necessities">Necessities</option>
+		<option value="Transportation">Transportation</option>
+	    </select>
+	    <small style="display: block; margin-top: 5px; color: #666; font-size: 0.75rem;">
+		💡 Hold <b>Ctrl</b> (Windows) or <b>Command</b> (Mac) to select multiple.
+	    </small>
+	</div>
+
+            <button type="submit" class="btn-primary" style="width: 100%; padding: 12px; font-weight: bold; cursor: pointer; border-radius: 12px;">
+                ✨ RUN DEEP SCAN
+            </button>
+            
+            <button type="button" onclick="updateDashboard()" style="width: 100%; margin-top: 10px; padding: 10px; cursor: pointer; background: white; border: 1px solid #ccc; border-radius: 12px; font-weight: 600;">
+                UPDATE SEARCH
+            </button>
+        </form>
     </aside>
 
-    <main style="display: flex; flex-direction: column; gap: 25px; overflow: hidden;">
+    <main id="main-display" style="display: flex; flex-direction: column; gap: 25px;">
         {% if results %}
             <section>
-                <h3 style="margin-top: 0; color: var(--navy-blue);">📊 NEURAL VISUALIZATION</h3>
+                <h3 style="margin: 0; color: var(--navy-blue);">📊 NEURAL VISUALIZATION</h3>
                 {% include "components/visuals.html" %}
             </section>
 
             <section>
                 <h3 style="color: var(--navy-blue);">🏆 MATCH ANALYSIS</h3>
-                <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div class="results-list" style="display: flex; flex-direction: column; gap: 12px;">
                     {% include "components/results.html" %}
                 </div>
             </section>
         {% else %}
-            <div style="flex-grow: 1; border: 6px dashed var(--sky-blue); border-radius: 30px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fafafa; min-height: 400px;">
+            <div id="empty-state" style="flex-grow: 1; border: 6px dashed var(--sky-blue); border-radius: 30px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fafafa; min-height: 500px; text-align: center;">
+                <div style="font-size: 4rem;">🔍</div>
                 <h2 style="color: var(--cinnamoroll-blue);">INITIALIZE SYSTEM</h2>
+                <p style="color: #666;">Upload a logo and click Run Deep Scan to start analysis.</p>
             </div>
         {% endif %}
     </main>
 </div>
+
+<script>
+    function handleFileSelect() {
+        const input = document.getElementById('file-input');
+        const status = document.getElementById('upload-status');
+        const filename = document.getElementById('status-filename');
+        if (input.files.length > 0) {
+            filename.innerText = input.files[0].name;
+            status.style.display = 'flex';
+            input.style.display = 'none';
+        }
+    }
+
+    function removeFile() {
+        const input = document.getElementById('file-input');
+        const status = document.getElementById('upload-status');
+        input.value = '';
+        input.style.display = 'block';
+        status.style.display = 'none';
+    }
+
+async function updateDashboard() {
+    const resultsContainer = document.querySelector('.results-list');
+    
+    // 1. Safety Check
+    if (!resultsContainer) {
+        console.error("Critical: .results-list not found in HTML");
+        return;
+    }
+
+    const form = document.getElementById('search-form');
+    if (!form) return;
+    
+    const formData = new FormData(form);
+
+    // 2. Loading State (Feedback para sa user)
+    resultsContainer.style.opacity = '0.5';
+    // Pwede mong lagyan ng CSS animation ang .loader class mo
+    resultsContainer.innerHTML = `
+        <div class="loader-container" style="text-align: center; padding: 40px;">
+            <div class="loader"></div>
+            <p style="margin-top: 15px; color: #666;">Scanning Databases...</p>
+        </div>
+    `;
+
+    try {
+        const response = await fetch('/filter-results', {
+            method: 'POST',
+            body: formData
+        });
+
+        // 3. Response Validation
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+            throw new TypeError("Server did not return JSON! Check for Python errors.");
+        }
+
+        const data = await response.json();
+        
+        // 4. Handle Results (Dito natin i-check kung may nahanap ba)
+        if (data.html && data.total_found > 0) {
+            resultsContainer.innerHTML = data.html;
+        } else {
+            // ETO YUNG OOD / NO MATCH STATE
+            resultsContainer.innerHTML = `
+                <div class="no-results" style="text-align: center; padding: 50px; color: #888;">
+                    <span style="font-size: 3rem;">📭</span>
+                    <h3 style="margin-top: 15px;">No Matches Found</h3>
+                    <p>Subukan mong baguhin ang <b>Industry Category</b> o <b>Database Scope</b>.</p>
+                    <small>Maaaring ang logo ay wala sa napiling filter distribution.</small>
+                </div>
+            `;
+        }
+        
+        // Bonus: I-update ang "Results Found" counter kung meron ka sa UI
+        const counter = document.getElementById('results-count');
+        if (counter) counter.innerText = data.total_found || 0;
+
+        if (data.error) {
+            console.warn("Session Issue:", data.error);
+        }
+
+    } catch (error) {
+        console.error("AJAX Error:", error);
+        resultsContainer.innerHTML = `
+            <div class="error-state" style="color: #d32f2f; text-align: center; padding: 40px;">
+                <p>⚠️ Error connecting to server. Please try again.</p>
+            </div>
+        `;
+    } finally {
+        // Ibalik ang focus/opacity
+        resultsContainer.style.opacity = '1';
+    }
+}
+
+    // AJAX Filter Function
+        // Auto-update on change
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.ajax-trigger').forEach(el => {
+            el.addEventListener('change', () => {
+                if (document.querySelector('.results-list')) {
+                    updateDashboard();
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

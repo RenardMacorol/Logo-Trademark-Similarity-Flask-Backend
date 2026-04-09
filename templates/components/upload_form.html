@@ -1,3 +1,47 @@
+<script>
+	// 1. Dito nakalagay yung function na gumagawa ng mabigat na trabaho
+	async function updateDashboard(event) {
+		if (event) event.preventDefault();
+
+		const form = document.getElementById('search-form');
+		const formData = new FormData(form);
+		const resultsContainer = document.querySelector('.results-list');
+
+		resultsContainer.style.opacity = '0.5';
+
+		try {
+			const response = await fetch('/filter-results', {
+				method: 'POST',
+				body: formData
+			});
+			const data = await response.json();
+			resultsContainer.innerHTML = data.html;
+
+			if (document.getElementById('total-matches')) {
+				document.getElementById('total-matches').innerText = `${data.total_found} Brands Scanned`;
+			}
+		} catch (error) {
+			console.error("Dashboard Sync Failed:", error);
+		} finally {
+			resultsContainer.style.opacity = '1';
+		}
+	}
+
+	// 2. Dito natin ilalagay yung listener na tinatanong mo
+	// Sinisiguro nito na "nakikinig" na ang browser sa clicks mo pagka-load na pagka-load ng page
+	document.addEventListener('DOMContentLoaded', () => {
+		const triggers = document.querySelectorAll('select, input[type="checkbox"]');
+
+		triggers.forEach(el => {
+			el.addEventListener('change', () => {
+				console.log("⚡ Change detected, updating dashboard...");
+				updateDashboard();
+			});
+		});
+	});
+</script>
+
+
 <form action="/" method="POST" enctype="multipart/form-data" style="text-align: left;">
 
 	<div style="margin-bottom: 20px;">
@@ -37,4 +81,63 @@
 		style="width: 100%; font-size: 1rem; box-shadow: 0 4px 10px rgba(185, 233, 255, 0.5);">
 		✨ Run Deep Scan
 	</button>
+
+	<div style="margin-top: 30px; border-top: 2px solid var(--sky-blue); padding-top: 20px;">
+
+		<div style="margin-bottom: 20px;">
+			<label
+				style="display: block; font-weight: 800; font-size: 0.8rem; margin-bottom: 8px; text-transform: uppercase;">
+				📊 Sort By
+			</label>
+			<select name="sort_by" style="width: 100%; cursor: pointer;">
+				<option value="confidence">Visual Confidence</option>
+				<option value="stability">Database Stability</option>
+				<option value="matches">Match Count</option>
+				<option value="consensus">Consensus Strength</option>
+			</select>
+		</div>
+
+		<div style="margin-bottom: 20px;">
+			<label
+				style="display: block; font-weight: 800; font-size: 0.8rem; margin-bottom: 8px; text-transform: uppercase;">
+				🛡️ Filter Consensus
+			</label>
+			<div style="display: flex; flex-direction: column; gap: 8px;">
+				<label
+					style="font-size: 0.9rem; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+					<input type="checkbox" name="consensus" value="Strong" checked> Strong
+				</label>
+				<label
+					style="font-size: 0.9rem; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+					<input type="checkbox" name="consensus" value="Moderate" checked> Moderate
+				</label>
+				<label
+					style="font-size: 0.9rem; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+					<input type="checkbox" name="consensus" value="Weak"> Weak
+				</label>
+			</div>
+		</div>
+
+		<div style="margin-bottom: 25px;">
+			<label
+				style="display: block; font-weight: 800; font-size: 0.8rem; margin-bottom: 8px; text-transform: uppercase;">
+				📂 Industry Category
+			</label>
+			<select name="category" multiple style="width: 100%; height: 100px; font-size: 0.85rem;">
+				<option value="all" selected>All Categories</option>
+				<option value="tech">Technology</option>
+				<option value="retail">Retail/E-commerce</option>
+				<option value="finance">Finance</option>
+				<option value="healthcare">Healthcare</option>
+			</select>
+			<small
+				style="color: var(--cinnamoroll-blue); font-size: 0.7rem; margin-top: 5px; display: block;">
+				Hold Ctrl/Cmd to select multiple
+			</small>
+		</div>
+
+		<button type="submit" class="btn-primary" style="width: 100%; padding: 12px;">
+			UPDATE SEARCH
+		</button>
+	</div>
 </form>

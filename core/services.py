@@ -33,7 +33,6 @@ class WonksNetService:
             model = cls.get_model()
 
             print(f"💾 [INIT] Loading {scope_key} dataset into RAM...")
-            # We use model.encoder because the search engine needs the vector generator
             cls._engines[scope_key] = LogoSearchEngine(
                 model.encoder, v_path, m_path,
                 distance_strategy=chi_square_distance
@@ -41,8 +40,8 @@ class WonksNetService:
         return cls._engines[scope_key]
 
     @classmethod
-    def predict(cls, cropped_rgb, scope=constant.DB_PH_SCOPE, k=5):
-        # 1. Select engines based on scope using the internal _get_scope helper
+    def predict(cls, cropped_rgb, scope=constant.DB_PH_SCOPE, k=5, sort_by="confidence", categories=None, consensus_levels=None):
+        # 1. Select engines based on scope
         targets = []
         if scope == constant.DB_PH_SCOPE:
             targets = [cls._get_scope(constant.DB_PH_SCOPE)]
@@ -58,9 +57,17 @@ class WonksNetService:
         raw_combined = []
         best_mask = None
 
-        # 2. Collect results from engines
+        # 2. Collect results from engines (Passing all filters)
         for engine in targets:
-            res, mask = engine.search(cropped_rgb, user_k=k)
+            # Note: Tinitingnan natin ang top 100 per engine para sa better aggregation
+            res, mask = engine.search(
+                cropped_rgb,
+                user_k=100,
+                sort_by=sort_by,
+                categories=categories,
+                consensus_levels=None,  # None muna rito, sa final aggregation na tayo mag-filter
+                scope=None  # Engine level doesn't need to know scope, the Service manages it
+            )
             raw_combined.extend(res)
             if best_mask is None:
                 best_mask = mask
@@ -81,10 +88,9 @@ class WonksNetService:
                 final_map[name]["stabilities"].append(item['stability'])
                 final_map[name]["match_counts"].append(item['match_count'])
 
-        # 4. Final Re-calculation for Merged Results
+        # 4. Final Re-calculation & Filtering
         final_output = []
         for name, data in final_map.items():
-            # Weighted Confidence Merge
             scores = data["scores"]
             if len(scores) > 1:
                 f_max = max(scores)
@@ -94,7 +100,6 @@ class WonksNetService:
             else:
                 final_conf = scores[0]
 
-            # Ethical Metrics Merge (Summing counts and averaging stability)
             total_matches = sum(data["match_counts"])
             avg_stability = sum(data["stabilities"]) / len(data["stabilities"])
 
@@ -104,21 +109,32 @@ class WonksNetService:
             item["stability"] = round(avg_stability, 2)
             item["match_count"] = total_matches
 
-            # Re-verify stability across both DBs (Ethical Logic)
-            item["is_stable"] = total_matches >= 5
-
             # Determine final consensus string
             if total_matches >= 15:
-                item["consensus"] = "Strong"
+                res_consensus = "Strong"
             elif total_matches >= 5:
-                item["consensus"] = "Moderate"
+                res_consensus = "Moderate"
             else:
-                item["consensus"] = "Weak"
+                res_consensus = "Weak"
+
+            item["consensus"] = res_consensus
+            item["is_stable"] = total_matches >= 5
+
+            # --- CONSENSUS FILTER (Final check) ---
+            if consensus_levels and res_consensus not in consensus_levels:
+                continue
 
             final_output.append(item)
 
-        # 5. Global Sort
-        final_output.sort(key=lambda x: x['confidence'], reverse=True)
+        # 5. Global Sort based on user preference
+        sort_map = {
+            "confidence": "confidence",
+            "stability": "stability",
+            "matches": "match_count"
+        }
+        target_key = sort_map.get(sort_by, "confidence")
+        final_output.sort(key=lambda x: x.get(target_key, 0), reverse=True)
+
         return final_output[:k], best_mask
 
     @classmethod
