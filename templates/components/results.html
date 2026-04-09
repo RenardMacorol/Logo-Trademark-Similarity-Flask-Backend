@@ -1,14 +1,56 @@
-{% for item in results %}
-<div class="match-item">
-	<div>
-		<div class="brand-name">{{ item.brand }}</div>
-		<div class="category-text">Industry: {{ item.domain }}</div>
-	</div>
-	<div style="text-align: right;">
-		<div class="confidence-badge">{{ item.confidence|round(2) }}%</div>
-		{% if item.confidence > 80 %}
-		<small style="color: gold; display: block; margin-top: 5px;">⭐ Top Verified</small>
-		{% endif %}
-	</div>
+<div class="results-list" style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
+    {% for item in results %}
+    <div style="background: var(--cloud-white); border: 2px solid var(--navy-blue); padding: 12px 20px; border-radius: 12px; display: flex; align-items: center; gap: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); box-sizing: border-box; transition: transform 0.2s ease;">
+        
+        <div style="flex: 0 0 220px; border-right: 2px solid var(--sky-blue); padding-right: 15px;">
+            <strong style="font-size: 1.15rem; color: var(--navy-blue); display: block; letter-spacing: -0.5px; line-height: 1.2;">
+                {{ item.brand }}
+            </strong>
+            <span style="color: var(--cinnamoroll-blue); font-size: 0.8rem; font-weight: 700; opacity: 0.8;">
+                {{ item.domain }}
+            </span>
+        </div>
+
+        <div style="flex: 0 0 160px; text-align: center;">
+            <span style="font-weight: 900; font-size: 0.65rem; text-transform: uppercase; padding: 5px 12px; border-radius: 4px; border: 2px solid var(--navy-blue); display: inline-block; letter-spacing: 1px;
+                {% if item.consensus == 'Strong' %}
+                    background: var(--sky-blue); color: var(--navy-blue);
+                {% elif item.consensus == 'Moderate' %}
+                    background: #fff9db; color: #947100; border-color: #fab005;
+                {% else %}
+                    background: #fff0f0; color: #c92a2a; border-color: #ff8787;
+                {% endif %}">
+                {{ item.consensus }}
+            </span>
+            <div style="font-size: 0.7rem; color: var(--navy-blue); font-weight: 700; margin-top: 5px; opacity: 0.7;">
+                {{ item.match_count }} MATCHES
+            </div>
+        </div>
+
+        <div style="flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 25px; background: #f8fbff; padding: 12px 20px; border-radius: 8px; border: 1px solid var(--sky-blue);">
+            
+            <div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 800; color: var(--navy-blue); margin-bottom: 5px; text-transform: uppercase; opacity: 0.8;">
+                    <span>Visual Confidence</span>
+                    <span>{{ item.confidence }}%</span>
+                </div>
+                <div style="width: 100%; background: #fff; height: 8px; border-radius: 10px; border: 1.5px solid var(--navy-blue); overflow: hidden;">
+                    <div style="width: {{ item.confidence }}%; background: var(--navy-blue); height: 100%;"></div>
+                </div>
+            </div>
+
+            <div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 800; color: var(--navy-blue); margin-bottom: 5px; text-transform: uppercase; opacity: 0.8;">
+                    <span>Stability</span>
+                    <span>{{ item.stability }}%</span>
+                </div>
+                <div style="width: 100%; background: #fff; height: 8px; border-radius: 10px; border: 1.5px solid var(--navy-blue); overflow: hidden;">
+                    <div style="width: {{ item.stability }}%; background: var(--sky-blue); height: 100%;"></div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+    {% endfor %}
 </div>
-{% endfor %}

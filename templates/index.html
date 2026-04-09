@@ -1,32 +1,31 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<p style="color: #6c757d; margin-bottom: 40px;">Neural Network Logo Recognition System</p>
+<div style="display: grid; grid-template-columns: 350px minmax(0, 1fr); gap: 25px; width: 100%;">
+    
+    <aside style="background: #F0FAFF; padding: 25px; border-radius: 20px; border: 4px solid var(--navy-blue); height: fit-content; position: sticky; top: 10px; z-index: 10;">
+        <h2 style="margin-top: 0; font-size: 1.5rem; border-bottom: 3px solid var(--sky-blue); padding-bottom: 10px;">⚙️ CONTROLS</h2>
+        {% include "components/upload_form.html" %}
+    </aside>
 
-{% include "components/upload_form.html" %}
+    <main style="display: flex; flex-direction: column; gap: 25px; overflow: hidden;">
+        {% if results %}
+            <section>
+                <h3 style="margin-top: 0; color: var(--navy-blue);">📊 NEURAL VISUALIZATION</h3>
+                {% include "components/visuals.html" %}
+            </section>
 
-{% if mask_img %}
-{% include "components/visuals.html" %}
-
-<div style="margin-top: 50px; text-align: left;">
-	<h3 style="border-left: 5px solid var(--primary-blue); padding-left: 15px;">
-		🏆 Top Matches Found ({{ current_scope }})
-	</h3>
-
-	{% for item in results %}
-	<div
-		style="display: flex; justify-content: space-between; align-items: center; padding: 20px; background: #fff; border-radius: 12px; margin-bottom: 15px; border: 1px solid #edf2f7;">
-		<div>
-			<div style="font-size: 1.3rem; font-weight: 700; color: var(--primary-blue);">{{ item.brand }}
-			</div>
-			<div style="color: #718096;">Industry: {{ item.domain }}</div>
-		</div>
-		<div
-			style="background: var(--success-green); color: white; padding: 8px 18px; border-radius: 50px; font-weight: 700;">
-			{{ item.confidence|round(2) }}%
-		</div>
-	</div>
-	{% endfor %}
+            <section>
+                <h3 style="color: var(--navy-blue);">🏆 MATCH ANALYSIS</h3>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    {% include "components/results.html" %}
+                </div>
+            </section>
+        {% else %}
+            <div style="flex-grow: 1; border: 6px dashed var(--sky-blue); border-radius: 30px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fafafa; min-height: 400px;">
+                <h2 style="color: var(--cinnamoroll-blue);">INITIALIZE SYSTEM</h2>
+            </div>
+        {% endif %}
+    </main>
 </div>
-{% endif %}
 {% endblock %}
