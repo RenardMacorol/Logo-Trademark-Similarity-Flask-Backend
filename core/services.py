@@ -57,36 +57,43 @@ class WonksNetService:
         raw_combined = []
         best_mask = None
 
-        # 2. Collect results from engines (Passing all filters)
+        # 2. Collect results from engines
         for engine in targets:
-            # Note: Tinitingnan natin ang top 100 per engine para sa better aggregation
+            # Kukuha tayo ng more candidates para sa aggregation (top 100)
             res, mask = engine.search(
                 cropped_rgb,
                 user_k=100,
                 sort_by=sort_by,
                 categories=categories,
-                consensus_levels=None,  # None muna rito, sa final aggregation na tayo mag-filter
-                scope=None  # Engine level doesn't need to know scope, the Service manages it
+                consensus_levels=None,
+                scope=None
             )
             raw_combined.extend(res)
             if best_mask is None:
                 best_mask = mask
 
-        # 3. Cross-Database Aggregation (Merging PH + Global info)
+        # 3. Cross-Database Aggregation (Preserving all metadata keys)
         final_map = {}
         for item in raw_combined:
-            name = item['brand']
+            # Gumamit ng .get() para flexible sa Brand/brand keys
+            name = item.get('Brand') or item.get('brand') or "Unknown"
+
             if name not in final_map:
                 final_map[name] = {
-                    "scores": [item['confidence']],
-                    "stabilities": [item['stability']],
-                    "match_counts": [item['match_count']],
-                    "item": item
+                    "scores": [item.get('confidence', 0)],
+                    "stabilities": [item.get('stability', 0)],
+                    "match_counts": [item.get('match_count', 0)],
+                    "item": item  # Dito naka-store ang buong dictionary kasama ang File_Path
                 }
             else:
-                final_map[name]["scores"].append(item['confidence'])
-                final_map[name]["stabilities"].append(item['stability'])
-                final_map[name]["match_counts"].append(item['match_count'])
+                final_map[name]["scores"].append(item.get('confidence', 0))
+                final_map[name]["stabilities"].append(item.get('stability', 0))
+                final_map[name]["match_counts"].append(
+                    item.get('match_count', 0))
+
+                # Kung mas mataas ang confidence ng bagong item, ito ang gawing primary metadata
+                if item.get('confidence', 0) > max(final_map[name]["scores"][:-1]):
+                    final_map[name]["item"] = item
 
         # 4. Final Re-calculation & Filtering
         final_output = []
@@ -103,7 +110,7 @@ class WonksNetService:
             total_matches = sum(data["match_counts"])
             avg_stability = sum(data["stabilities"]) / len(data["stabilities"])
 
-            # Create the final unified object
+            # Sync ang calculated values sa original item
             item = data["item"]
             item["confidence"] = round(final_conf, 2)
             item["stability"] = round(avg_stability, 2)
@@ -120,7 +127,6 @@ class WonksNetService:
             item["consensus"] = res_consensus
             item["is_stable"] = total_matches >= 5
 
-            # --- CONSENSUS FILTER (Final check) ---
             if consensus_levels and res_consensus not in consensus_levels:
                 continue
 
