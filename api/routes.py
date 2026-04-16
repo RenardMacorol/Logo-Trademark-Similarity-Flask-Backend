@@ -43,13 +43,13 @@ def predict():
 
         # Convert to RGB and Crop
         img_rgb = cv2.cvtColor(img_raw, cv2.COLOR_BGR2RGB)
-        cropped_rgb = auto_crop_logo(img_rgb)
+        # cropped_rgb = auto_crop_logo(img_rgb)
 
         # 3. AI Inference (WonksNet Engine)
         search_cats = [category_input] if category_input != 'All' else []
 
         response_data = WonksNetService.predict(
-            cropped_rgb,
+            img_rgb,
             k=user_k,
             scope=scope,
             categories=search_cats
@@ -64,7 +64,7 @@ def predict():
         display_size = (300, 300)
 
         # Input Preview (Original Cropped)
-        orig_resized = cv2.resize(cropped_rgb, display_size)
+        orig_resized = cv2.resize(img_rgb, display_size)
         orig_base64 = encode_to_base64(orig_resized)
 
         # AI Vision Heatmap (Input Segmentation)
