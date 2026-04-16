@@ -75,10 +75,9 @@ class WonksNetService:
                 for i in range(len(vectors)):
                     if i >= len(metadata_list):
                         break
-
                     meta = metadata_list[i]
 
-                    # 1. Extraction with Key Detection
+                    # Extraction with Key Detection
                     industry_domain = (meta.get('Category') or meta.get('category') or
                                        meta.get('industry_domain') or "General")
                     brand_name = (meta.get('Brand') or meta.get('brand') or
@@ -86,7 +85,7 @@ class WonksNetService:
                     image_path = (meta.get('File_Path') or meta.get('file_path') or
                                   meta.get('path') or "")
 
-                    # 2. Smart Recovery from Path
+                    # Smart Recovery from Path
                     if (brand_name == "Unknown" or industry_domain == "General") and image_path:
                         parts = image_path.split('/')
                         if len(parts) >= 3:
@@ -95,7 +94,6 @@ class WonksNetService:
                             if brand_name == "Unknown":
                                 brand_name = parts[-2]
 
-                    # 3. Cleaning & Filtering
                     brand_name = str(brand_name).replace(
                         '_', ' ').title().strip()
                     industry_domain = str(industry_domain).strip().title()
@@ -131,8 +129,14 @@ class WonksNetService:
         return np.mean([feat1[0], feat2[0]], axis=0)
 
     @classmethod
-    def predict(cls, cropped_rgb, scope=constant.DB_PH_SCOPE, k=5, sort_by="confidence", categories=None):
+    def predict(cls, cropped_rgb, scope=constant.DB_PH_SCOPE, k=10, sort_by="confidence", categories=None):
+        """
+        AI Inference Service:
+        k: Dynamic Top K results requested by user.
+        """
         model = cls.get_model()
+
+        # 1. TTA Inference
         query_vector = cls._predict_with_tta(model, cropped_rgb)
 
         targets = []
@@ -144,39 +148,59 @@ class WonksNetService:
 
         raw_combined = []
         best_mask = None
+        final_forensic = None
+        # Optional: track the best ORB score if multiple engines return results
+        max_orb_score = 0.0
 
+        # 2. Search across engines
         for engine in targets:
-            res, mask = engine.search(
+            # engine.search should return: (results_list, heatmap_array, forensic_b64)
+            # pass 'k' to engine to limit internal processing
+            res, mask, forensic = engine.search(
                 cropped_rgb,
                 query_vector=query_vector,
-                user_k=100,
+                user_k=k,
                 categories=categories
             )
             raw_combined.extend(res)
+
             if best_mask is None:
                 best_mask = mask
 
+            # Get Forensic evidence from the first engine that yields a result
+            if final_forensic is None and forensic is not None:
+                final_forensic = forensic
+                # If your engine returns orb_score inside 'res',
+                # extract it for the Rank 1 of this engine
+                if res and 'orb_score' in res[0]:
+                    max_orb_score = res[0]['orb_score']
+
+        # 3. Global Re-ranking (Sort by confidence descending)
         raw_combined.sort(key=lambda x: x.get(sort_by, 0), reverse=True)
-        top_k = raw_combined[:k]
+        top_k_results = raw_combined[:k]
 
+        # 4. Latent Space Mapping Logic
         neighbor_vectors = [item.get('vector')
-                            for item in top_k if 'vector' in item]
-
-        # Background context logic
+                            for item in top_k_results if 'vector' in item]
         industry_filter = categories[0] if categories and len(
             categories) > 0 else 'All'
-        bg_vectors, _ = cls.get_market_embeddings(
+
+        bg_feats, _ = cls.get_market_embeddings(
             scope=scope, industry=industry_filter)
 
-        if len(bg_vectors) > 50:
-            idx = np.random.choice(len(bg_vectors), 50, replace=False)
-            bg_vectors = bg_vectors[idx]
+        # Limit background for performance (Mobile Viz)
+        if len(bg_feats) > 50:
+            idx = np.random.choice(len(bg_feats), 50, replace=False)
+            bg_feats = bg_feats[idx]
 
         latent_data = LatentMapper.map_to_2d(
-            query_vector, neighbor_vectors, bg_vectors)
+            query_vector, neighbor_vectors, bg_feats)
 
+        # 5. Final Payload for API Route
         return {
-            "top_matches": top_k,
+            "top_matches": top_k_results,
             "latent_map": latent_data,
-            "heatmap": best_mask
+            "heatmap": best_mask,
+            "forensic_evidence": final_forensic,
+            "orb_score": max_orb_score
         }

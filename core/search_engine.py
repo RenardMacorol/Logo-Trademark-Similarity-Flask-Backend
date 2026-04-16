@@ -1,6 +1,7 @@
 import numpy as np
 import json
 import cv2
+import os
 
 
 class LogoSearchEngine:
@@ -25,28 +26,20 @@ class LogoSearchEngine:
 
     def _prepare_tensor(self, img_rgb):
         """Internal helper para siguruhing (1, 224, 224, 3) ang shape na papasok sa model"""
-        # 1. Resize sa target size ng model
         resized = cv2.resize(img_rgb, (224, 224))
-        # 2. Convert to float32 at i-normalize (0.0 to 1.0)
         normalized = resized.astype(np.float32) / 255.0
-        # 3. I-add ang Batch Dimension (IMPORTANT FIX)
-        # Ito ang magpapalit sa shape mula (224, 224, 3) papuntang (1, 224, 224, 3)
         return np.expand_dims(normalized, axis=0)
 
     def search(self, cropped_rgb, query_vector=None, user_k=5, sort_by="confidence", categories=None, consensus_levels=None, scope=None):
         # --- 1. PRE-PROCESSING & AI PREDICTION ---
-        # Kahit may query_vector o wala, kailangan natin ng mask para sa heatmap base64
         input_tensor = self._prepare_tensor(cropped_rgb)
 
         if query_vector is None:
-            # Kunin ang vectors at masks sa model
             vectors, masks = self.model.predict(input_tensor, verbose=0)
             query_vec = vectors[0]
             best_mask = masks[0]
         else:
-            # Gamitin ang TTA vector na galing sa service
             query_vec = query_vector
-            # Predict lang para makuha yung spatial attention mask (heatmap)
             _, masks = self.model.predict(input_tensor, verbose=0)
             best_mask = masks[0]
 
@@ -69,7 +62,6 @@ class LogoSearchEngine:
             brand_scope = metadata.get('Scope') or 'GLOBAL'
             file_path = metadata.get('File_Path') or metadata.get('path') or ""
 
-            # Filter Logic
             if scope and scope != "BOTH":
                 if str(brand_scope).upper() != str(scope).upper():
                     continue
@@ -87,7 +79,6 @@ class LogoSearchEngine:
                     "domain": category,
                     "scope": brand_scope,
                     "path": file_path,
-                    # Vector para sa Latent Map
                     "vector": self.vectors_db[i].tolist()
                 }
 
@@ -105,12 +96,12 @@ class LogoSearchEngine:
             s_max = scores[0]
             s_others = scores[1:10]
             s_others_avg = sum(s_others) / len(s_others) if s_others else s_max
+
             weighted_conf = (0.8 * s_max) + (0.2 * s_others_avg)
 
             match_count = len(scores)
             stability_score = min(100, (match_count / 20) * 100)
 
-            # Consensus Logic
             if match_count >= 15:
                 consensus = "Strong"
             elif match_count >= 5:
@@ -131,7 +122,9 @@ class LogoSearchEngine:
                 "stability": round(stability_score, 2),
                 "consensus": consensus,
                 "match_count": match_count,
-                "is_stable": match_count >= 5
+                "is_stable": match_count >= 5,
+                "orb_similarity": 0,
+                "forensic_viz": None
             })
 
         # --- 6. DYNAMIC SORTING ---
@@ -140,4 +133,37 @@ class LogoSearchEngine:
         target_key = sort_map.get(sort_by, "confidence")
         final_results.sort(key=lambda x: x.get(target_key, 0), reverse=True)
 
-        return final_results[:user_k], best_mask
+        # Slice results to top K
+        top_k_list = final_results[:user_k]
+
+        # --- 🟢 STAGE 2: MULTI-FORENSIC TRIGGER ---
+        for match in top_k_list:
+            try:
+                from processor.forensic_engine import ForensicEngine
+
+                raw_path = match["File_Path"]
+
+                # 🛠️ DOCKER PATH MAPPING
+                # Ito yung fix para mabasa ng cv2.imread ang files sa loob ng container
+                fixed_path = raw_path.replace(
+                    "/workspace/Logo2K_Dataset_Permanent/datasetcopy/",
+                    "/workspace/backend/static/database/"
+                )
+
+                if os.path.exists(fixed_path):
+                    viz, orb_score = ForensicEngine.generate_evidence(
+                        cropped_rgb,
+                        fixed_path
+                    )
+                    match["orb_similarity"] = orb_score
+                    match["forensic_viz"] = viz
+                else:
+                    print(f"❌ File Not Found at: {fixed_path}")
+
+            except Exception as e:
+                print(f"⚠️ Forensic Engine Error for {match['brand']}: {e}")
+
+        # Ibabalik ang lahat para sa Service layer
+        first_forensic = top_k_list[0]["forensic_viz"] if top_k_list else None
+
+        return top_k_list, best_mask, first_forensic
