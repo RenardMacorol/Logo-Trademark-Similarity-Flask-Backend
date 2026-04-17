@@ -2,6 +2,10 @@ import os
 import cv2
 from processor.image_utils import encode_to_base64
 
+import os
+import cv2
+from processor.image_utils import encode_to_base64
+
 
 def finalize_results(results, input_category):
     json_safe_results = []
@@ -41,8 +45,9 @@ def finalize_results(results, input_category):
         elif i == 0 and margin > 15.0:
             stability = "Strong Contender"
 
-        # Domain Penalty
-        brand_domain = match.get('Category') or "General"
+        # Domain Penalty (Added safety catch for lowercase 'category' just in case)
+        brand_domain = match.get('Category') or match.get(
+            'category') or "General"
         if input_category and input_category != 'All':
             if brand_domain.lower() != input_category.lower():
                 confidence = round(confidence * 0.85, 2)
@@ -58,10 +63,13 @@ def finalize_results(results, input_category):
                 thumb_base64 = encode_to_base64(
                     cv2.cvtColor(thumb, cv2.COLOR_BGR2RGB))
 
+        # 🟢 THE FIX: Safely extract the brand name checking multiple case variations
+        raw_brand = match.get('brand') or match.get('Brand') or "Unknown"
+
         json_safe_results.append({
             "confidence": confidence,
             "metadata": {
-                "brand_name": (match.get('Brand') or "Unknown").strip(),
+                "brand_name": str(raw_brand).strip(),
                 "industry_domain": brand_domain,
                 "margin_lead": round(margin, 2) if i == 0 else 0
             },
