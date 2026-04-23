@@ -17,7 +17,7 @@ api_bp = Blueprint('api', __name__)
 def predict():
     """
     Main Endpoint: Handles image upload, AI inference, 
-    Forensic generation, and Latent Space Mapping.
+    and Neural Segmentation Attention mapping.
     """
     file = request.files.get('file')
     if not file:
@@ -33,16 +33,14 @@ def predict():
         user_k = 10
 
     try:
-        # 2. Pre-processing (Byte to OpenCV)
+        # 2. Pre-processing
         img_bytes = np.frombuffer(file.read(), np.uint8)
         img_raw = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
 
         if img_raw is None:
             return jsonify({"status": "error", "message": "Invalid image format"}), 400
 
-        # Convert to RGB and Crop
         img_rgb = cv2.cvtColor(img_raw, cv2.COLOR_BGR2RGB)
-        # cropped_rgb = auto_crop_logo(img_rgb)
 
         # 3. AI Inference (WonksNet Engine)
         search_cats = [category_input] if category_input != 'All' else []
@@ -54,83 +52,42 @@ def predict():
             categories=search_cats
         )
 
-        # Extract components from service response
+        # 🟢 Capture Core Components + The Neural Mask
         raw_results = response_data.get('top_matches', [])
-        ai_mask = response_data.get('heatmap')
         latent_map = response_data.get('latent_map')
+        # This is the missing link
+        raw_mask = response_data.get('segmentation_mask')
 
-        # 4. Generate Visuals for Flutter UI (Base64) - INPUT IMAGE
+        # 4. Generate Visuals for Flutter UI
         display_size = (300, 300)
 
-        # Input Preview (Original Cropped)
+        # Process Input Image
         orig_resized = cv2.resize(img_rgb, display_size)
         orig_base64 = encode_to_base64(orig_resized)
 
-        # AI Vision Heatmap (Input Segmentation)
-        if ai_mask is not None:
-            mask_data = (ai_mask.squeeze() * 255).astype(np.uint8)
-            heatmap = cv2.applyColorMap(mask_data, cv2.COLORMAP_JET)
-            heatmap_rgb = cv2.cvtColor(cv2.resize(
-                heatmap, display_size), cv2.COLOR_BGR2RGB)
-            mask_base64 = encode_to_base64(heatmap_rgb)
-        else:
-            mask_base64 = None
+        # 🟢 Process Segmentation Attention (Heatmap)
+        mask_base64 = ""
+        if raw_mask is not None:
+            # Resize mask to match display size and ensure it's in 0-255 range
+            mask_resized = cv2.resize(raw_mask, display_size)
+            if mask_resized.max() <= 1.0:  # Normalize if float
+                mask_resized = (mask_resized * 255).astype(np.uint8)
 
-        # 5. Post-Processing / Defense Logic
+            # Optional: Apply COLORMAP_JET if you want a colorful heatmap
+            # heatmap = cv2.applyColorMap(mask_resized, cv2.COLORMAP_JET)
+            # mask_base64 = encode_to_base64(heatmap)
+
+            mask_base64 = encode_to_base64(mask_resized)
+
+        # 5. Post-Processing (Neural Confidence Calibration)
         processed_matches = finalize_results(raw_results, category_input)
-
-        # 🟢 CRITICAL SYNC: Process Forensic and Attention Data
-        for i in range(len(processed_matches)):
-            if i < len(raw_results):
-                raw_item = raw_results[i]
-
-                # Sync Forensic Visualization & ORB Score
-                processed_matches[i]['forensic_viz'] = raw_item.get(
-                    'forensic_viz')
-                processed_matches[i]['orb_similarity'] = raw_item.get(
-                    'orb_similarity', 0.0)
-
-                # --- PROCESS ATTENTION MASKS ---
-                attention_mask = raw_item.get('attention_mask')
-
-                # If it's already a Base64 string from ForensicEngine, pass it directly
-                if isinstance(attention_mask, str):
-                    processed_matches[i]['attention_b64'] = attention_mask
-                elif attention_mask is not None:
-                    # Legacy fallback: process raw numpy array if needed
-                    att_data = (attention_mask.squeeze()
-                                * 255).astype(np.uint8)
-                    att_heatmap = cv2.applyColorMap(
-                        att_data, cv2.COLORMAP_MAGMA)
-                    att_rgb = cv2.cvtColor(cv2.resize(
-                        att_heatmap, display_size), cv2.COLOR_BGR2RGB)
-                    processed_matches[i]['attention_b64'] = encode_to_base64(
-                        att_rgb)
-                else:
-                    processed_matches[i]['attention_b64'] = None
-
-                # --- PROCESS PIXEL DNA ---
-                pixel_dna = raw_item.get('pixel_dna')
-
-                if isinstance(pixel_dna, str):
-                    processed_matches[i]['pixel_dna_b64'] = pixel_dna
-                elif pixel_dna is not None:
-                    dna_data = (pixel_dna.squeeze() * 255).astype(np.uint8)
-                    dna_heatmap = cv2.applyColorMap(
-                        dna_data, cv2.COLORMAP_VIRIDIS)
-                    dna_rgb = cv2.cvtColor(cv2.resize(
-                        dna_heatmap, display_size), cv2.COLOR_BGR2RGB)
-                    processed_matches[i]['pixel_dna_b64'] = encode_to_base64(
-                        dna_rgb)
-                else:
-                    processed_matches[i]['pixel_dna_b64'] = None
 
         # 6. Final JSON Response
         return jsonify({
             "status": "success",
             "predictions": processed_matches,
             "original_img_base64": orig_base64,
-            "mask_img_base64": mask_base64,
+            "mask_img_base64": mask_base64,  # 🟢 Flutter now receives the attention map
             "latent_map": latent_map,
             "total_found": len(processed_matches),
             "meta": {
